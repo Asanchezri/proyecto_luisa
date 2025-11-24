@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Incontinencia Urinaria</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons (Phosphor Icons via CDN) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- PDF/Image Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Custom Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #0d9488;
+            cursor: pointer;
+            margin-top: -10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 2px;
+        }
+
+        /* Export Styles */
+        .export-mode {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+        }
+
+        .export-mode * {
+            color: #000000 !important;
+        }
+
+        .export-mode .text-teal-600,
+        .export-mode .text-teal-500 {
+            color: #0d9488 !important;
+            /* Keep brand color but darker */
+        }
+
+        .export-mode .text-amber-500 {
+            color: #d97706 !important;
+        }
+
+        .export-mode .text-rose-600 {
+            color: #e11d48 !important;
+        }
+
+        .export-mode .bg-slate-50 {
+            background-color: #f8fafc !important;
+        }
+    </style>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        teal: { 50: '#f0fdfa', 100: '#ccfbf1', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 900: '#134e4a' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-50 cursor-pointer hover:bg-slate-50 transition-colors"
+        onclick="location.reload()">
+        <div class="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-2 text-teal-600">
+                <i class="ph-fill ph-heart-beat text-2xl"></i>
+                <h1 class="text-xl font-bold tracking-tight">IncontinenceCheck</h1>
+            </div>
+            <div class="text-xs font-medium bg-teal-50 text-teal-700 px-3 py-1 rounded-full border border-teal-100">
+                Inicio
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-3xl mx-auto px-4 py-8 w-full">
+
+        <!-- STEP 1: Personal Data -->
+        <div id="step1" class="fade-in">
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-2xl font-bold mb-6 text-slate-800 flex items-center gap-2">
+                    <i class="ph-duotone ph-user-circle text-teal-500 text-3xl"></i>
+                    Datos del Paciente
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Edad</label>
+                        <input type="number" id="age"
+                            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all bg-slate-50 focus:bg-white"
+                            placeholder="Ej. 52">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Peso (kg)</label>
+                        <input type="number" id="weight" oninput="calculateBMI()"
+                            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all bg-slate-50 focus:bg-white"
+                            placeholder="Ej. 68">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Altura (cm)</label>
+                        <input type="number" id="height" oninput="calculateBMI()"
+                            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all bg-slate-50 focus:bg-white"
+                            placeholder="Ej. 165">
+                    </div>
+
+                    <div class="flex items-center justify-center bg-teal-50 rounded-xl border border-teal-100 p-4">
+                        <div class="text-center">
+                            <span class="block text-xs font-bold text-teal-600 uppercase tracking-wider mb-1">IMC
+                                Calculado</span>
+                            <span id="bmiDisplay" class="text-3xl font-extrabold text-teal-800">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <h3
+                    class="text-lg font-semibold mb-4 text-slate-800 flex items-center gap-2 border-t border-slate-100 pt-6">
+                    <i class="ph-duotone ph-first-aid text-teal-500 text-xl"></i>
+                    Antecedentes y Hábitos
+                </h3>
+
+                <div class="space-y-3">
+                    <label
+                        class="flex items-center p-4 rounded-xl border border-slate-200 hover:border-teal-300 hover:bg-teal-50/30 cursor-pointer transition-all group">
+                        <div
+                            class="p-2 bg-rose-100 text-rose-600 rounded-lg mr-4 group-hover:scale-110 transition-transform">
+                            <i class="ph-fill ph-cigarette text-xl"></i>
+                        </div>
+                        <span class="font-medium text-slate-700 flex-grow">¿Es fumadora actual?</span>
+                        <input type="checkbox" id="smoker"
+                            class="w-6 h-6 text-teal-600 rounded focus:ring-teal-500 border-gray-300 accent-teal-600">
+                    </label>
+
+                    <label
+                        class="flex items-center p-4 rounded-xl border border-slate-200 hover:border-teal-300 hover:bg-teal-50/30 cursor-pointer transition-all group">
+                        <div
+                            class="p-2 bg-blue-100 text-blue-600 rounded-lg mr-4 group-hover:scale-110 transition-transform">
+                            <i class="ph-fill ph-drop text-xl"></i>
+                        </div>
+                        <span class="font-medium text-slate-700 flex-grow">¿Tiene Diabetes?</span>
+                        <input type="checkbox" id="diabetes"
+                            class="w-6 h-6 text-teal-600 rounded focus:ring-teal-500 border-gray-300 accent-teal-600">
+                    </label>
+
+                    <label
+                        class="flex items-center p-4 rounded-xl border border-slate-200 hover:border-teal-300 hover:bg-teal-50/30 cursor-pointer transition-all group">
+                        <div
+                            class="p-2 bg-indigo-100 text-indigo-600 rounded-lg mr-4 group-hover:scale-110 transition-transform">
+                            <i class="ph-fill ph-heart text-xl"></i>
+                        </div>
+                        <span class="font-medium text-slate-700 flex-grow">¿Tiene Hipertensión?</span>
+                        <input type="checkbox" id="hypertension"
+                            class="w-6 h-6 text-teal-600 rounded focus:ring-teal-500 border-gray-300 accent-teal-600">
+                    </label>
+                </div>
+
+                <button onclick="goToStep(2)"
+                    class="mt-8 w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-teal-200/50 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                    Continuar al Test
+                    <i class="ph-bold ph-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 2: Quiz (ICIQ-SF) -->
+        <div id="step2" class="hidden fade-in">
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
+                <div class="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-700">
+                    <p class="font-bold mb-2">Cuestionario de incontinencia urinaria ICIQ-SF</p>
+                    <p class="mb-2">El ICIQ (International Consultation on Incontinence Questionnaire) es un
+                        cuestionario autoadministrado que identifica a las personas con incontinencia de orina y el
+                        impacto en la calidad de vida.</p>
+                    <p class="font-medium">Puntuación del ICIQ-SF: sume las puntuaciones de las preguntas 1+2+3.</p>
+                    <p>Se considera diagnóstico de IU cualquier puntuación superior a cero.</p>
+                </div>
+
+                <!-- Q1 -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">1. ¿Con qué frecuencia pierde orina? (marque
+                        sólo una respuesta).</h3>
+                    <div class="space-y-3">
+                        <button onclick="selectOption('freq', 0, this)"
+                            class="quiz-btn w-full text-left p-4 rounded-xl border border-slate-200 hover:bg-teal-50 hover:border-teal-300 transition-all flex items-center group">
+                            <div
+                                class="w-5 h-5 rounded-full border-2 border-slate-300 mr-3 group-hover:border-teal-500 flex items-center justify-center">
+                                <div class="w-2.5 h-2.5 rounded-full bg-teal-500 opacity-0 transition-opacity"></div>
+                            </div>
+                            Nunca (0)
+                        </button>
+                        <button onclick="selectOption('freq', 1, this)"
+                            class="quiz-btn w-full text-left p-4 rounded-xl border border-slate-200 hover:bg-teal-50 hover:border-teal-300 transition-all flex items-center group">
+                            <div
+                                class="w-5 h-5 rounded-full border-2 border-slate-300 mr-3 group-hover:border-teal-500 flex items-center justify-center">
+                                <div class="w-2.5 h-2.5 rounded-full bg-teal-500 opacity-0 transition-opacity"></div>
+                            </div>
+                            Una vez a la semana (1)
+                        </button>
+                        <button onclick="selectOption('freq', 2, this)"
+                            class="quiz-btn w-full text-left p-4 rounded-xl border border-slate-200 hover:bg-teal-50 hover:border-teal-300 transition-all flex items-center group">
+                            <div
+                                class="w-5 h-5 rounded-full border-2 border-slate-300 mr-3 group-hover:border-teal-500 flex items-center justify-center">
+                                <div class="w-2.5 h-2.5 rounded-full bg-teal-500 opacity-0 transition-opacity"></div>
+                            </div>
+                            2-3 veces/semana (2)
+                        </button>
+                        <button onclick="selectOption('freq', 3, this)"
+                            class="quiz-btn w-full text-left p-4 rounded-xl border border-slate-200 hover:bg-teal-50 hover:border-teal-300 transition-all flex items-center group">
+                            <div
+                                class="w-5 h-5 rounded-full border-2 border-slate-300 mr-3 group-hover:border-teal-500 flex items-center justify-center">
+                                <div class="w-2.5 h-2.5 rounded-full bg-teal-500 opacity-0 transition-opacity"></div>
+                            </div>
+                            Una vez al día (3)
+                        </button>
+                        <button onclick="selectOption('freq', 4, this)"
+                            class="quiz-btn w-full text-left p-4 rounded-xl border border-slate-200 hover:bg-teal-50 hover:border-teal-300 transition-all flex items-center group">
+                            <div
+                                class="w-5 h-5 rounded-full border-2 border-slate-300 mr-3 group-hover:border-teal-500 flex items-center justify-center">
+                                <div class="w-2.5 h-2.5 rounded-full bg-teal-500 opacity-0 transition-opacity"></div>
+                            </div>
+                            Varias veces al día (4)
+                        </button>
+                        <button onclick="selectOption('freq', 5, this)"
+                            class="quiz-btn w-full text-left p-4 rounded-xl border border-slate-200 hover:bg-teal-50 hover:border-teal-300 transition-all flex items-center group">
+                            <div
+                                class="w-5 h-5 rounded-full border-2 border-slate-300 mr-3 group-hover:border-teal-500 flex items-center justify-center">
+                                <div class="w-2.5 h-2.5 rounded-full bg-teal-500 opacity-0 transition-opacity"></div>
+                            </div>
+                            Continuamente (5)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Q2 -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">2. Indique su opinión acerca de la cantidad de
+                        orina que usted cree que se le escapa, es decir, la cantidad de orina que pierde habitualmente
+                        (tanto si lleva protección como si no). Marque sólo una respuesta.</h3>
+                    <div class="space-y-3">
+                        <button onclick="selectOption('amount', 0, this)"
+                            class="quiz-btn w-full text-left p-4 rounded-xl border border-slate-200 hover:bg-teal-50 hover:border-teal-300 transition-all flex items-center group">
+                            <div
+                                class="w-5 h-5 rounded-full border-2 border-slate-300 mr-3 group-hover:border-teal-500 flex items-center justify-center">
+                                <div class="w-2.5 h-2.5 rounded-full bg-teal-500 opacity-0 transition-opacity"></div>
+                            </div>
+                            No se me escapa nada (0)
+                        </button>
+                        <button onclick="selectOption('amount', 2, this)"
+                            class="quiz-btn w-full text-left p-4 rounded-xl border border-slate-200 hover:bg-teal-50 hover:border-teal-300 transition-all flex items-center group">
+                            <div
+                                class="w-5 h-5 rounded-full border-2 border-slate-300 mr-3 group-hover:border-teal-500 flex items-center justify-center">
+                                <div class="w-2.5 h-2.5 rounded-full bg-teal-500 opacity-0 transition-opacity"></div>
+                            </div>
+                            Muy poca cantidad (2)
+                        </button>
+                        <button onclick="selectOption('amount', 4, this)"
+                            class="quiz-btn w-full text-left p-4 rounded-xl border border-slate-200 hover:bg-teal-50 hover:border-teal-300 transition-all flex items-center group">
+                            <div
+                                class="w-5 h-5 rounded-full border-2 border-slate-300 mr-3 group-hover:border-teal-500 flex items-center justify-center">
+                                <div class="w-2.5 h-2.5 rounded-full bg-teal-500 opacity-0 transition-opacity"></div>
+                            </div>
+                            Una cantidad moderada (4)
+                        </button>
+                        <button onclick="selectOption('amount', 6, this)"
+                            class="quiz-btn w-full text-left p-4 rounded-xl border border-slate-200 hover:bg-teal-50 hover:border-teal-300 transition-all flex items-center group">
+                            <div
+                                class="w-5 h-5 rounded-full border-2 border-slate-300 mr-3 group-hover:border-teal-500 flex items-center justify-center">
+                                <div class="w-2.5 h-2.5 rounded-full bg-teal-500 opacity-0 transition-opacity"></div>
+                            </div>
+                            Mucha cantidad (6)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Q3 -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">3. ¿En qué medida estos escapes de orina, que
+                        tiene, han afectado su vida diaria?</h3>
+                    <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                        <div class="flex justify-between text-sm font-medium text-slate-500 mb-2">
+                            <span>1 (Nada)</span>
+                            <span>10 (Mucho)</span>
+                        </div>
+                        <input type="range" id="impact" min="0" max="10" value="0"
+                            oninput="updateRangeValue(this.value)" class="w-full">
+                        <div class="text-center mt-4">
+                            <span id="rangeValue" class="text-3xl font-bold text-teal-600">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Q4 -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">4. ¿Cuándo pierde orina? Señale todo lo que le
+                        pasa a Ud.</h3>
+                    <div class="space-y-2">
+                        <label
+                            class="flex items-center p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" name="q4" value="Nunca"
+                                class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500 border-gray-300">
+                            <span class="ml-3 text-slate-700">Nunca.</span>
+                        </label>
+                        <label
+                            class="flex items-center p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" name="q4" value="Antes de llegar al servicio"
+                                class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500 border-gray-300">
+                            <span class="ml-3 text-slate-700">Antes de llegar al servicio.</span>
+                        </label>
+                        <label
+                            class="flex items-center p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" name="q4" value="Al toser o estornudar"
+                                class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500 border-gray-300">
+                            <span class="ml-3 text-slate-700">Al toser o estornudar.</span>
+                        </label>
+                        <label
+                            class="flex items-center p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" name="q4" value="Mientras duerme"
+                                class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500 border-gray-300">
+                            <span class="ml-3 text-slate-700">Mientras duerme.</span>
+                        </label>
+                        <label
+                            class="flex items-center p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" name="q4" value="Al realizar esfuerzos físicos/ejercicio"
+                                class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500 border-gray-300">
+                            <span class="ml-3 text-slate-700">Al realizar esfuerzos físicos/ejercicio.</span>
+                        </label>
+                        <label
+                            class="flex items-center p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" name="q4" value="Cuando termina de orinar y ya se ha vestido"
+                                class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500 border-gray-300">
+                            <span class="ml-3 text-slate-700">Cuando termina de orinar y ya se ha vestido.</span>
+                        </label>
+                        <label
+                            class="flex items-center p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" name="q4" value="Sin motivo evidente"
+                                class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500 border-gray-300">
+                            <span class="ml-3 text-slate-700">Sin motivo evidente.</span>
+                        </label>
+                        <label
+                            class="flex items-center p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                            <input type="checkbox" name="q4" value="De forma continua"
+                                class="w-5 h-5 text-teal-600 rounded focus:ring-teal-500 border-gray-300">
+                            <span class="ml-3 text-slate-700">De forma continua.</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <button onclick="goToStep(1)"
+                        class="flex-1 bg-white border border-slate-300 text-slate-700 font-bold py-4 rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
+                        <i class="ph-bold ph-arrow-left"></i>
+                        Atrás
+                    </button>
+                    <button onclick="calculateAndShowResults()"
+                        class="flex-[2] bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-teal-200/50 transition-all flex items-center justify-center gap-2">
+                        Ver Resultados
+                        <i class="ph-bold ph-check-circle"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: Results -->
+        <div id="step3" class="hidden fade-in">
+            <div id="resultCard" class="p-8 rounded-2xl border text-center mb-8 transition-all">
+                <h2 class="text-lg font-medium text-slate-600 mb-2">Puntuación ICIQ-SF</h2>
+                <div class="text-7xl font-extrabold mb-4 flex items-baseline justify-center gap-1">
+                    <span id="finalScore">0</span>
+                    <span class="text-3xl text-slate-400 font-medium">/21</span>
+                </div>
+                <div id="severityLabel"
+                    class="inline-block px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wide bg-white border shadow-sm">
+                    --
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
+                <h3 class="text-lg font-bold mb-4 text-slate-800 flex items-center gap-2">
+                    <i class="ph-duotone ph-warning-circle text-amber-500 text-2xl"></i>
+                    Factores de Riesgo Detectados
+                </h3>
+                <ul id="riskList" class="space-y-3 text-slate-700">
+                    <!-- Risks injected here -->
+                </ul>
+                <p id="noRisks" class="text-slate-500 italic hidden">No se detectaron factores de riesgo mayores.</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8">
+                <h3 class="text-lg font-bold mb-4 text-slate-800 flex items-center gap-2">
+                    <i class="ph-duotone ph-file-text text-blue-500 text-2xl"></i>
+                    Recomendaciones
+                </h3>
+                <div id="recommendations" class="prose prose-slate text-slate-600">
+                    <!-- Recommendations injected here -->
+                </div>
+            </div>
+
+            <div class="flex gap-4 mb-6">
+                <button onclick="downloadPDF()"
+                    class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl shadow-md transition-all flex items-center justify-center gap-2">
+                    <i class="ph-bold ph-file-pdf"></i>
+                    Descargar PDF
+                </button>
+                <button onclick="downloadImage()"
+                    class="flex-1 bg-white border border-slate-300 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
+                    <i class="ph-bold ph-image"></i>
+                    Guardar Imagen
+                </button>
+            </div>
+
+            <button onclick="location.reload()"
+                class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                <i class="ph-bold ph-arrow-counter-clockwise"></i>
+                Realizar Nueva Evaluación
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Hidden Container for Export -->
+    <div id="export-container"
+        style="position: absolute; left: -9999px; top: 0; width: 800px; background: white; padding: 40px; font-family: sans-serif; color: black !important;">
+        <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #0d9488; padding-bottom: 20px;">
+            <h1 style="color: #0d9488; font-size: 24px; margin: 0;">IncontinenceCheck</h1>
+            <p style="color: #666; margin: 5px 0 0 0;">Informe de Resultados</p>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 40px; padding: 20px; background: #f0fdfa; border-radius: 10px;">
+            <h2 style="margin: 0 0 10px 0; font-size: 18px; color: #333;">Puntuación ICIQ-SF</h2>
+            <div style="font-size: 48px; font-weight: bold; color: #0d9488; margin-bottom: 10px;">
+                <span id="export-score">0</span><span style="font-size: 24px; color: #999;">/21</span>
+            </div>
+            <div id="export-severity"
+                style="display: inline-block; padding: 5px 20px; background: white; border-radius: 20px; font-weight: bold; border: 1px solid #ccc;">
+                --
+            </div>
+        </div>
+
+        <div style="margin-bottom: 30px;">
+            <h3 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">Factores de Riesgo</h3>
+            <ul id="export-risks" style="list-style: none; padding: 0;">
+                <!-- Risks injected here -->
+            </ul>
+            <p id="export-no-risks" style="display: none; font-style: italic; color: #666;">No se detectaron factores de
+                riesgo mayores.</p>
+        </div>
+
+        <div>
+            <h3 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">Recomendaciones</h3>
+            <div id="export-recs" style="line-height: 1.6;">
+                <!-- Recs injected here -->
+            </div>
+        </div>
+
+        <div
+            style="margin-top: 50px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 20px;">
+            Generado por IncontinenceCheck - Herramienta de orientación médica
+        </div>
+    </div>
+
+    <footer class="bg-white border-t border-slate-200 mt-auto">
+        <div class="max-w-3xl mx-auto px-4 py-6 text-center text-sm text-slate-500">
+            <p>© 2025 IncontinenceCheck. Herramienta de orientación médica.</p>
+        </div>
+    </footer>
+
+    <script>
+        // State
+        let scores = { freq: 0, amount: 0, impact: 0 };
+
+        // BMI Calculation
+        function calculateBMI() {
+            const w = parseFloat(document.getElementById('weight').value);
+            const h = parseFloat(document.getElementById('height').value);
+            const display = document.getElementById('bmiDisplay');
+
+            if (w && h) {
+                const hM = h / 100;
+                const bmi = (w / (hM * hM)).toFixed(1);
+                display.innerText = bmi;
+                display.className = `text-3xl font-extrabold ${bmi > 25 ? 'text-amber-500' : 'text-teal-800'}`;
+                return bmi;
+            } else {
+                display.innerText = '--';
+                display.className = 'text-3xl font-extrabold text-teal-800';
+                return null;
+            }
+        }
+
+        // Navigation
+        function goToStep(step) {
+            // Validation for Step 1
+            if (step === 2) {
+                const age = document.getElementById('age').value;
+                if (!age) { alert('Por favor ingrese su edad'); return; }
+            }
+
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.add('hidden');
+            document.getElementById('step3').classList.add('hidden');
+
+            document.getElementById(`step${step}`).classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        // Quiz Logic
+        function selectOption(category, value, btn) {
+            scores[category] = value;
+
+            // Visual feedback
+            const siblings = btn.parentElement.children;
+            for (let sib of siblings) {
+                sib.classList.remove('border-teal-500', 'bg-teal-50', 'text-teal-900');
+                sib.classList.add('border-slate-200');
+                sib.querySelector('.rounded-full.bg-teal-500').classList.add('opacity-0');
+            }
+
+            btn.classList.remove('border-slate-200');
+            btn.classList.add('border-teal-500', 'bg-teal-50', 'text-teal-900');
+            btn.querySelector('.rounded-full.bg-teal-500').classList.remove('opacity-0');
+        }
+
+        function updateRangeValue(val) {
+            document.getElementById('rangeValue').innerText = val;
+            scores.impact = parseInt(val);
+        }
+
+        // Results Logic
+        function calculateAndShowResults() {
+            const totalScore = scores.freq + scores.amount + scores.impact;
+
+            // UI Updates
+            const resultCard = document.getElementById('resultCard');
+            const severityLabel = document.getElementById('severityLabel');
+            const finalScore = document.getElementById('finalScore');
+
+            finalScore.innerText = totalScore;
+
+            let colorClass = '';
+            let bgClass = '';
+            let borderClass = '';
+            let text = '';
+
+            if (totalScore === 0) {
+                text = 'Sin Incontinencia';
+                colorClass = 'text-green-600';
+                bgClass = 'bg-green-50';
+                borderClass = 'border-green-200';
+            } else if (totalScore <= 5) {
+                text = 'Leve';
+                colorClass = 'text-yellow-600';
+                bgClass = 'bg-yellow-50';
+                borderClass = 'border-yellow-200';
+            } else if (totalScore <= 12) {
+                text = 'Moderada';
+                colorClass = 'text-orange-600';
+                bgClass = 'bg-orange-50';
+                borderClass = 'border-orange-200';
+            } else if (totalScore <= 18) {
+                text = 'Severa';
+                colorClass = 'text-rose-600';
+                bgClass = 'bg-rose-50';
+                borderClass = 'border-rose-200';
+            } else {
+                text = 'Muy Severa';
+                colorClass = 'text-red-700';
+                bgClass = 'bg-red-50';
+                borderClass = 'border-red-200';
+            }
+
+            resultCard.className = `p-8 rounded-2xl border text-center mb-8 transition-all ${bgClass} ${borderClass}`;
+            finalScore.className = `text-7xl font-extrabold mb-4 flex items-baseline justify-center gap-1 ${colorClass}`;
+            severityLabel.innerText = text;
+            severityLabel.className = `inline-block px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wide bg-white border shadow-sm ${colorClass} ${borderClass}`;
+
+            // Risks
+            const riskList = document.getElementById('riskList');
+            riskList.innerHTML = '';
+            let hasRisks = false;
+
+            if (document.getElementById('smoker').checked) {
+                addRisk('Tabaquismo (Factor de riesgo modificable)');
+                hasRisks = true;
+            }
+            if (document.getElementById('diabetes').checked) {
+                addRisk('Diabetes (Requiere control estricto)');
+                hasRisks = true;
+            }
+            if (document.getElementById('hypertension').checked) {
+                addRisk('Hipertensión');
+                hasRisks = true;
+            }
+
+            const bmi = calculateBMI();
+            if (bmi && bmi > 30) {
+                addRisk(`Obesidad (IMC ${bmi}) - Factor de alto riesgo`);
+                hasRisks = true;
+            } else if (bmi && bmi > 25) {
+                addRisk(`Sobrepeso (IMC ${bmi})`);
+                hasRisks = true;
+            }
+
+            // Q4 Analysis
+            const q4Checkboxes = document.querySelectorAll('input[name="q4"]:checked');
+            if (q4Checkboxes.length > 0) {
+                hasRisks = true; // Technically symptoms, but we list them
+                q4Checkboxes.forEach(cb => {
+                    if (cb.value !== 'Nunca') {
+                        addRisk(`Síntoma: ${cb.value}`);
+                    }
+                });
+            }
+
+            if (!hasRisks) {
+                document.getElementById('noRisks').classList.remove('hidden');
+            } else {
+                document.getElementById('noRisks').classList.add('hidden');
+            }
+
+            // Recommendations
+            const recs = document.getElementById('recommendations');
+            let recHTML = '<ul class="list-disc pl-5 space-y-2">';
+
+            if (totalScore > 0) {
+                recHTML += '<li><strong>Consulta Médica:</strong> Se recomienda visitar a un urólogo o ginecólogo para una valoración detallada.</li>';
+                recHTML += '<li><strong>Suelo Pélvico:</strong> Los ejercicios de Kegel pueden ser beneficiosos (consulte a un fisioterapeuta).</li>';
+                if (document.getElementById('smoker').checked) recHTML += '<li><strong>Tabaquismo:</strong> Dejar de fumar reduce la tos crónica y la presión en la vejiga.</li>';
+                if (bmi > 25) recHTML += '<li><strong>Control de Peso:</strong> Reducir el peso disminuye la presión intraabdominal sobre la vejiga.</li>';
+            } else {
+                recHTML += '<li>Mantenga hábitos de vida saludables y realice chequeos regulares.</li>';
+            }
+            recHTML += '</ul>';
+            recs.innerHTML = recHTML;
+
+            goToStep(3);
+        }
+
+        function addRisk(text) {
+            const li = document.createElement('li');
+            li.className = 'flex items-start gap-3';
+            li.innerHTML = `<i class="ph-fill ph-warning text-amber-500 text-xl mt-0.5"></i><span>${text}</span>`;
+            document.getElementById('riskList').appendChild(li);
+        }
+
+        // Export Functions
+        function prepareExport() {
+            // Copy data to export container
+            document.getElementById('export-score').innerText = document.getElementById('finalScore').innerText;
+            document.getElementById('export-severity').innerText = document.getElementById('severityLabel').innerText;
+
+            // Copy styles for severity
+            const sevLabel = document.getElementById('severityLabel');
+            const exportSev = document.getElementById('export-severity');
+            if (sevLabel.classList.contains('text-green-600')) exportSev.style.color = '#16a34a';
+            else if (sevLabel.classList.contains('text-yellow-600')) exportSev.style.color = '#ca8a04';
+            else if (sevLabel.classList.contains('text-orange-600')) exportSev.style.color = '#ea580c';
+            else if (sevLabel.classList.contains('text-rose-600')) exportSev.style.color = '#e11d48';
+            else exportSev.style.color = '#b91c1c';
+
+            // Copy Risks
+            const riskList = document.getElementById('riskList');
+            const exportRiskList = document.getElementById('export-risks');
+            exportRiskList.innerHTML = '';
+
+            if (riskList.children.length === 0) {
+                document.getElementById('export-no-risks').style.display = 'block';
+            } else {
+                document.getElementById('export-no-risks').style.display = 'none';
+                Array.from(riskList.children).forEach(li => {
+                    const newLi = document.createElement('li');
+                    newLi.style.marginBottom = '10px';
+                    newLi.style.display = 'flex';
+                    newLi.style.alignItems = 'center';
+                    newLi.style.gap = '10px';
+                    newLi.innerHTML = `<span style="color: #d97706; font-size: 20px;">⚠</span> <span>${li.querySelector('span').innerText}</span>`;
+                    exportRiskList.appendChild(newLi);
+                });
+            }
+
+            // Copy Recs
+            const recs = document.getElementById('recommendations');
+            const exportRecs = document.getElementById('export-recs');
+            exportRecs.innerHTML = recs.innerHTML;
+        }
+
+        async function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            prepareExport();
+            const element = document.getElementById('export-container');
+
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Generando...';
+
+            try {
+                const canvas = await html2canvas(element, {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    logging: false
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF({
+                    orientation: 'p',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save('Resultados-Incontinencia.pdf');
+            } catch (err) {
+                console.error(err);
+                alert('Error al generar PDF.');
+            } finally {
+                btn.innerHTML = originalText;
+            }
+        }
+
+        async function downloadImage() {
+            prepareExport();
+            const element = document.getElementById('export-container');
+
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Guardando...';
+
+            try {
+                const canvas = await html2canvas(element, {
+                    scale: 2,
+                    backgroundColor: '#ffffff'
+                });
+
+                const link = document.createElement('a');
+                link.download = 'Resultados-Incontinencia.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (err) {
+                console.error(err);
+                alert('Error al guardar imagen.');
+            } finally {
+                btn.innerHTML = originalText;
+            }
+        }
+    </script>
+</body>
+
+</html>
